@@ -28,14 +28,88 @@ extern crate conv;
 #[macro_use]
 extern crate log;
 extern crate byteorder;
+extern crate tokio_core;
+extern crate futures;
 
 use protocol::{ReadBytes, ConstPackedSizeBytes, WriteBytes};
 use std::io;
-use std::net::{ToSocketAddrs, UdpSocket};
+use std::net::{AddrParseError, SocketAddr, ToSocketAddrs, UdpSocket};
 use std::time::Duration;
+
+use futures::Future;
 
 pub mod protocol;
 pub mod unix_time;
+
+#[derive(Debug)]
+pub enum NtpError {
+    Io(io::Error),
+    Addr(AddrParseError),
+}
+
+impl From<AddrParseError> for NtpError {
+    fn from(err: AddrParseError) -> Self {
+        NtpError::Addr(err)
+    }
+}
+
+impl From<io::Error> for NtpError {
+    fn from(err: io::Error) -> Self {
+        NtpError::Io(err)
+    }
+}
+
+pub fn request_async(addr: SocketAddr, handle: &tokio_core::reactor::Handle) -> Result<Box<Future<Item = protocol::Packet, Error = io::Error>>, NtpError> {
+    // Create a packet for requesting from an NTP server as a client.
+    let packet = {
+        let leap_indicator = protocol::LeapIndicator::default();
+        let version = protocol::Version::V4;
+        let mode = protocol::Mode::Client;
+        let poll = 0;
+        let precision = 0;
+        let root_delay = protocol::ShortFormat::default();
+        let root_dispersion = protocol::ShortFormat::default();
+        let transmit_timestamp = unix_time::Instant::now().into();
+        let stratum = protocol::Stratum::UNSPECIFIED;
+        let src = protocol::PrimarySource::Null;
+        let reference_id = protocol::ReferenceIdentifier::PrimarySource(src);
+        let reference_timestamp = protocol::TimestampFormat::default();
+        let receive_timestamp = protocol::TimestampFormat::default();
+        let origin_timestamp = protocol::TimestampFormat::default();
+        protocol::Packet {
+            leap_indicator,
+            version,
+            mode,
+            stratum,
+            poll,
+            precision,
+            root_delay,
+            root_dispersion,
+            reference_id,
+            reference_timestamp,
+            origin_timestamp,
+            receive_timestamp,
+            transmit_timestamp,
+        }
+    };
+
+    // Write the packet to a slice of bytes.
+    let mut bytes = [0u8; protocol::Packet::PACKED_SIZE_BYTES];
+    (&mut bytes[..]).write_bytes(&packet)?;
+    let bytes = bytes.to_vec();
+
+    let sock = tokio_core::net::UdpSocket::bind(&"0.0.0.0:0".parse()?, handle)?;
+    // Send the data.
+    let f = sock.send_dgram(bytes, addr)
+        .and_then(|(udp_sock, buf)| {
+            udp_sock.recv_dgram(buf)
+        })
+        .and_then(|(_, buf, size, addr)| {
+            println!("receive ntp response from {:?}", addr);
+            (&buf[..size]).read_bytes()
+        });
+    Ok(Box::new(f))
+}
 
 /// Send a blocking request to an ntp server with a hardcoded 5 second timeout.
 ///
@@ -100,6 +174,7 @@ pub fn request<A: ToSocketAddrs>(addr: A) -> io::Result<protocol::Packet> {
     packet = (&bytes[..]).read_bytes()?;
     Ok(packet)
 }
+
 
 #[test]
 fn test_request_ntp_org() {

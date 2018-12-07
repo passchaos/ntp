@@ -16,6 +16,8 @@ byteorder = "1.1"
 conv = "0.3.2"
 custom_derive = "0.1.5"
 log = "0.3.6"
+tokio-core = "0.1.6"
+futures = "0.1"
 
 [dev-dependencies]
 chrono = "0.4.4"
