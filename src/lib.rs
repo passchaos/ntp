@@ -35,6 +35,7 @@ use protocol::{ReadBytes, ConstPackedSizeBytes, WriteBytes};
 use std::io;
 use std::net::{AddrParseError, SocketAddr, ToSocketAddrs, UdpSocket};
 use std::time::Duration;
+use std::fmt;
 
 use futures::Future;
 
@@ -56,6 +57,24 @@ impl From<AddrParseError> for NtpError {
 impl From<io::Error> for NtpError {
     fn from(err: io::Error) -> Self {
         NtpError::Io(err)
+    }
+}
+
+impl fmt::Display for NtpError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            NtpError::Io(err) => err.fmt(f),
+            NtpError::Addr(err) => err.fmt(f),
+        }
+    }
+}
+
+impl std::error::Error for NtpError {
+    fn description(&self) -> &str {
+        match self {
+            NtpError::Io(err) => err.description(),
+            NtpError::Addr(err) => err.description(),
+        }
     }
 }
 
