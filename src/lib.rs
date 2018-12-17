@@ -28,7 +28,8 @@ extern crate conv;
 #[macro_use]
 extern crate log;
 extern crate byteorder;
-extern crate tokio_core;
+// extern crate tokio;
+extern crate tokio_udp;
 extern crate futures;
 
 use protocol::{ReadBytes, ConstPackedSizeBytes, WriteBytes};
@@ -59,7 +60,7 @@ impl From<io::Error> for NtpError {
     }
 }
 
-pub fn request_async(addr: SocketAddr, handle: &tokio_core::reactor::Handle) -> Result<Box<Future<Item = protocol::Packet, Error = io::Error>>, NtpError> {
+pub fn request_async(addr: &SocketAddr) -> Result<Box<Future<Item = protocol::Packet, Error = io::Error>>, NtpError> {
     // Create a packet for requesting from an NTP server as a client.
     let packet = {
         let leap_indicator = protocol::LeapIndicator::default();
@@ -98,7 +99,8 @@ pub fn request_async(addr: SocketAddr, handle: &tokio_core::reactor::Handle) -> 
     (&mut bytes[..]).write_bytes(&packet)?;
     let bytes = bytes.to_vec();
 
-    let sock = tokio_core::net::UdpSocket::bind(&"0.0.0.0:0".parse()?, handle)?;
+    let sock = tokio_udp::UdpSocket::bind(&"0.0.0.0:0".parse()?)?;
+    // let sock = tokio_core::net::UdpSocket::bind(&"0.0.0.0:0".parse()?, handle)?;
     // Send the data.
     let f = sock.send_dgram(bytes, addr)
         .and_then(|(udp_sock, buf)| {

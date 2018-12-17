@@ -15,8 +15,8 @@ categories = ["date-and-time", "network-programming", "parser-implementations", 
 byteorder = "1.1"
 conv = "0.3.2"
 custom_derive = "0.1.5"
-log = "0.3.6"
-tokio-core = "0.1.6"
+log = "0.4"
+tokio-udp = "0.1"
 futures = "0.1"
 
 [dev-dependencies]
