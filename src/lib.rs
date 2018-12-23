@@ -60,6 +60,24 @@ impl From<io::Error> for NtpError {
     }
 }
 
+impl std::fmt::Display for NtpError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            NtpError::Io(err) => err.fmt(f),
+            NtpError::Addr(err) => err.fmt(f),
+        }
+    }
+}
+
+impl std::error::Error for NtpError {
+    fn description(&self) -> &str {
+        match self {
+            NtpError::Io(err) => err.description(),
+            NtpError::Addr(err) => err.description(),
+        }
+    }
+}
+
 pub fn request_async(addr: &SocketAddr) -> Result<Box<Future<Item = protocol::Packet, Error = io::Error>>, NtpError> {
     // Create a packet for requesting from an NTP server as a client.
     let packet = {
