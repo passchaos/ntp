@@ -123,8 +123,7 @@ pub fn request_async(addr: SocketAddr, handle: &tokio_core::reactor::Handle) -> 
         .and_then(|(udp_sock, buf)| {
             udp_sock.recv_dgram(buf)
         })
-        .and_then(|(_, buf, size, addr)| {
-            println!("receive ntp response from {:?}", addr);
+        .and_then(|(_, buf, size, _)| {
             (&buf[..size]).read_bytes()
         });
     Ok(Box::new(f))
