@@ -78,7 +78,7 @@ impl std::error::Error for NtpError {
     }
 }
 
-pub fn request_async(addr: &SocketAddr) -> Result<Box<Future<Item = protocol::Packet, Error = io::Error>>, NtpError> {
+pub fn request_async(addr: &SocketAddr) -> Result<impl Future<Item = protocol::Packet, Error = io::Error>, NtpError> {
     // Create a packet for requesting from an NTP server as a client.
     let packet = {
         let leap_indicator = protocol::LeapIndicator::default();
@@ -124,10 +124,10 @@ pub fn request_async(addr: &SocketAddr) -> Result<Box<Future<Item = protocol::Pa
         .and_then(|(udp_sock, buf)| {
             udp_sock.recv_dgram(buf)
         })
-        .and_then(|(_, buf, size, addr)| {
+        .and_then(|(_, buf, size, _)| {
             (&buf[..size]).read_bytes()
         });
-    Ok(Box::new(f))
+    Ok(f)
 }
 
 /// Send a blocking request to an ntp server with a hardcoded 5 second timeout.
